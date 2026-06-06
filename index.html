@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT Asset Analysis Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="data.js"></script>
+  <style>
+    :root {
+      --blue-900: #0c2d4a;
+      --blue-700: #1565a8;
+      --blue-500: #1e88d8;
+      --blue-100: #e8f4fc;
+      --blue-50: #f4f9fd;
+      --white: #ffffff;
+      --gray-600: #5a6b7d;
+      --gray-200: #dde4eb;
+      --good: #2e7d4f;
+      --fair: #c9a227;
+      --poor: #e67e22;
+      --damaged: #c0392b;
+      --shadow: 0 4px 20px rgba(12, 45, 74, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--blue-50);
+      color: var(--blue-900);
+      line-height: 1.5;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
+      color: var(--white);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      background: var(--white);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--blue-700);
+      letter-spacing: -0.5px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .header .subtitle {
+      font-size: 0.85rem;
+      opacity: 0.9;
+      margin-top: 0.15rem;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 0.85rem;
+      opacity: 0.95;
+    }
+
+    .toolbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 1rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 130px;
+    }
+
+    .filter-group label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--gray-600);
+    }
+
+    .filter-group select {
+      padding: 0.45rem 0.6rem;
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      background: var(--white);
+      color: var(--blue-900);
+      max-width: 180px;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--blue-700);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: var(--blue-900); }
+
+    .btn-outline {
+      background: var(--white);
+      color: var(--blue-700);
+      border: 1px solid var(--blue-500);
+    }
+
+    main {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 3rem;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .kpi-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.25rem 1rem;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--blue-500);
+      text-align: center;
+    }
+
+    .kpi-card .value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--blue-700);
+      line-height: 1.2;
+    }
+
+    .kpi-card .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--gray-600);
+      margin-top: 0.35rem;
+    }
+
+    .kpi-card.working { border-left-color: var(--good); }
+    .kpi-card.working .value { color: var(--good); }
+    .kpi-card.damaged { border-left-color: var(--damaged); }
+    .kpi-card.damaged .value { color: var(--damaged); }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 1.5rem 0 1rem;
+      color: var(--blue-900);
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue-100);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+
+    .chart-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--blue-900);
+    }
+
+    .chart-card.wide { grid-column: 1 / -1; }
+
+    .chart-wrap {
+      position: relative;
+      height: 280px;
+    }
+
+    .chart-wrap.tall { height: 360px; }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .table-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-card.wide { grid-column: 1 / -1; }
+
+    .table-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    th {
+      background: var(--blue-100);
+      font-weight: 700;
+      color: var(--blue-900);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover td { background: var(--blue-50); }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .badge-good { background: #d4edda; color: var(--good); }
+    .badge-fair { background: #fff3cd; color: #856404; }
+    .badge-poor { background: #ffe5cc; color: var(--poor); }
+    .badge-damaged { background: #f8d7da; color: var(--damaged); }
+
+    .print-summary {
+      display: none;
+    }
+
+    @media (max-width: 1100px) {
+      .charts-grid, .tables-grid { grid-template-columns: 1fr; }
+      .chart-card.wide { grid-column: auto; }
+    }
+
+    @media (max-width: 640px) {
+      .header, .toolbar, main { padding-left: 1rem; padding-right: 1rem; }
+      .kpi-card .value { font-size: 1.5rem; }
+    }
+
+    @media print {
+      body { background: white; }
+      .toolbar, .btn { display: none !important; }
+      .header { background: var(--blue-900) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      main { padding: 0.5rem; max-width: none; }
+      .chart-card, .kpi-card, .table-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid var(--gray-200);
+      }
+      .print-summary {
+        display: block;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+      }
+      .charts-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-brand">
+      <div class="logo" aria-hidden="true">IT</div>
+      <div>
+        <h1>IT Asset Analysis Dashboard</h1>
+        <p class="subtitle">Executive overview — computers, laptops &amp; printers</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div id="lastUpdated">Last updated: —</div>
+      <div>Source: Computer.html</div>
+    </div>
+  </header>
+
+  <div class="toolbar no-print">
+    <div class="filter-group">
+      <label for="fDistrict">District</label>
+      <select id="fDistrict"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fBranch">Branch</label>
+      <select id="fBranch"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fOfficer">Officer</label>
+      <select id="fOfficer"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fProcessor">Processor</label>
+      <select id="fProcessor"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fRam">RAM</label>
+      <select id="fRam"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fOs">Operating System</label>
+      <select id="fOs"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fCondition">Condition</label>
+      <select id="fCondition"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="fPrinterModel">Printer Model</label>
+      <select id="fPrinterModel"><option value="">All</option></select>
+    </div>
+    <button type="button" class="btn btn-outline" id="btnReset">Reset filters</button>
+    <button type="button" class="btn btn-primary" id="btnPrint">Print summary</button>
+  </div>
+
+  <main>
+    <div class="print-summary" id="printSummary"></div>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <h2 class="section-title">Asset distribution</h2>
+    <div class="charts-grid">
+      <div class="chart-card wide">
+        <h3>Assets by District</h3>
+        <div class="chart-wrap"><canvas id="chartDistrict"></canvas></div>
+      </div>
+      <div class="chart-card wide">
+        <h3>Assets by Branch (top branches)</h3>
+        <div class="chart-wrap tall"><canvas id="chartBranch"></canvas></div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Device health &amp; specifications</h2>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Device Condition Analysis</h3>
+        <div class="chart-wrap"><canvas id="chartCondition"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Operating System Distribution</h3>
+        <div class="chart-wrap"><canvas id="chartOs"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Processor Distribution</h3>
+        <div class="chart-wrap"><canvas id="chartProcessor"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>RAM Analysis</h3>
+        <div class="chart-wrap"><canvas id="chartRam"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Storage Distribution</h3>
+        <div class="chart-wrap"><canvas id="chartStorage"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Printer Model Analysis</h3>
+        <div class="chart-wrap"><canvas id="chartPrinter"></canvas></div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Management tables</h2>
+    <div class="tables-grid">
+      <div class="table-card wide">
+        <h3>Top Branches by Assets</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Branch Name</th>
+                <th>Computers</th>
+                <th>Printers</th>
+                <th>Total Assets</th>
+              </tr>
+            </thead>
+            <tbody id="tableBranches"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="table-card wide">
+        <h3>Devices Requiring Attention (Poor / Damaged)</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Officer</th>
+                <th>Branch Name</th>
+                <th>Device Name</th>
+                <th>Processor</th>
+                <th>RAM</th>
+                <th>Operating System</th>
+                <th>Condition</th>
+              </tr>
+            </thead>
+            <tbody id="tableAttention"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const CHART_COLORS = {
+      blue: ["#1565a8", "#1e88d8", "#42a5f5", "#64b5f6", "#90caf9", "#bbdefb"],
+      condition: ["#2e7d4f", "#c9a227", "#e67e22", "#c0392b"],
+      pie: ["#0c2d4a", "#1565a8", "#1e88d8", "#42a5f5", "#7eb8e8", "#b3d4f0"],
+    };
+
+    let rawData = null;
+    let charts = {};
+
+    function loadData() {
+      if (window.ASSET_DATA) return window.ASSET_DATA;
+      throw new Error("data.js not loaded. Run: node scripts/parse-computer-html.js");
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base" })
+      );
+    }
+
+    function getFilters() {
+      return {
+        district: document.getElementById("fDistrict").value,
+        branch: document.getElementById("fBranch").value,
+        officer: document.getElementById("fOfficer").value,
+        processor: document.getElementById("fProcessor").value,
+        ram: document.getElementById("fRam").value,
+        os: document.getElementById("fOs").value,
+        condition: document.getElementById("fCondition").value,
+        printerModel: document.getElementById("fPrinterModel").value,
+      };
+    }
+
+    function rowMatchesFilters(row, f) {
+      if (f.district && row.district !== f.district) return false;
+      if (f.branch && row.branch !== f.branch) return false;
+      if (f.officer && row.officer !== f.officer) return false;
+      if (f.processor && row.processorCategory !== f.processor) return false;
+      if (f.ram && row.ramCategory !== f.ram) return false;
+      if (f.os && row.osCategory !== f.os) return false;
+      if (f.printerModel && row.printerModel !== f.printerModel) return false;
+      if (f.condition) {
+        const conds = [];
+        if (row.hasComputer) conds.push(row.computerCondition);
+        if (row.hasPrinter) conds.push(row.printerCondition);
+        if (!conds.includes(f.condition)) return false;
+      }
+      return true;
+    }
+
+    function filterRows(rows) {
+      const f = getFilters();
+      return rows.filter((r) => rowMatchesFilters(r, f));
+    }
+
+    function countBy(rows, keyFn) {
+      const map = new Map();
+      rows.forEach((r) => {
+        const k = keyFn(r);
+        if (!k) return;
+        map.set(k, (map.get(k) || 0) + 1);
+      });
+      return map;
+    }
+
+    function assetCountForRow(row) {
+      let n = 0;
+      if (row.hasComputer) n += 1;
+      if (row.hasPrinter) n += 1;
+      return n;
+    }
+
+    function computeMetrics(rows) {
+      const computers = rows.filter((r) => r.hasComputer && r.deviceType === "computer");
+      const laptops = rows.filter((r) => r.hasComputer && r.deviceType === "laptop");
+      const printers = rows.filter((r) => r.hasPrinter);
+      const districts = new Set(rows.map((r) => r.district).filter(Boolean));
+      const branches = new Set(rows.map((r) => r.branch).filter(Boolean));
+
+      const conditions = [];
+      rows.forEach((r) => {
+        if (r.hasComputer) conditions.push(r.computerCondition);
+        if (r.hasPrinter) conditions.push(r.printerCondition);
+      });
+
+      const working = conditions.filter((c) => c === "Good" || c === "Fair").length;
+      const damaged = conditions.filter((c) => c === "Poor" || c === "Damaged").length;
+
+      return {
+        totalAssets: computers.length + laptops.length + printers.length,
+        totalComputers: computers.length,
+        totalLaptops: laptops.length,
+        totalPrinters: printers.length,
+        totalDistricts: districts.size,
+        totalBranches: branches.size,
+        workingDevices: working,
+        damagedDevices: damaged,
+        computers,
+        laptops,
+        printers,
+        rows,
+      };
+    }
+
+    function renderKpis(m) {
+      const items = [
+        { label: "Total Assets", value: m.totalAssets },
+        { label: "Total Computers", value: m.totalComputers },
+        { label: "Total Laptops", value: m.totalLaptops },
+        { label: "Total Printers", value: m.totalPrinters },
+        { label: "Total Districts", value: m.totalDistricts },
+        { label: "Total Branches", value: m.totalBranches },
+        { label: "Working Devices", value: m.workingDevices, cls: "working" },
+        { label: "Damaged Devices", value: m.damagedDevices, cls: "damaged" },
+      ];
+      document.getElementById("kpiGrid").innerHTML = items
+        .map(
+          (i) => `
+        <div class="kpi-card ${i.cls || ""}">
+          <div class="value">${i.value.toLocaleString()}</div>
+          <div class="label">${i.label}</div>
+        </div>`
+        )
+        .join("");
+    }
+
+    function destroyChart(id) {
+      if (charts[id]) {
+        charts[id].destroy();
+        delete charts[id];
+      }
+    }
+
+    function makeChart(id, config) {
+      destroyChart(id);
+      const ctx = document.getElementById(id);
+      charts[id] = new Chart(ctx, config);
+    }
+
+    function mapToChartData(map, sortDesc = true) {
+      let entries = [...map.entries()];
+      if (sortDesc) entries.sort((a, b) => b[1] - a[1]);
+      return { labels: entries.map((e) => e[0]), values: entries.map((e) => e[1]) };
+    }
+
+    function renderCharts(m, rows) {
+      const districtMap = new Map();
+      rows.forEach((r) => {
+        if (!r.district) return;
+        districtMap.set(r.district, (districtMap.get(r.district) || 0) + assetCountForRow(r));
+      });
+      const district = mapToChartData(districtMap);
+      makeChart("chartDistrict", {
+        type: "bar",
+        data: {
+          labels: district.labels,
+          datasets: [{
+            label: "Total Assets",
+            data: district.values,
+            backgroundColor: CHART_COLORS.blue[0],
+            borderRadius: 6,
+          }],
+        },
+        options: chartOptions("District", true),
+      });
+
+      const branchMap = new Map();
+      rows.forEach((r) => {
+        if (!r.branch) return;
+        branchMap.set(r.branch, (branchMap.get(r.branch) || 0) + assetCountForRow(r));
+      });
+      const branchData = mapToChartData(branchMap);
+      const branch = branchData.labels.slice(0, 20).map((label, i) => ({
+        label,
+        value: branchData.values[i],
+      }));
+      makeChart("chartBranch", {
+        type: "bar",
+        data: {
+          labels: branch.map((b) => b.label),
+          datasets: [{
+            label: "Total Assets",
+            data: branch.map((b) => b.value),
+            backgroundColor: CHART_COLORS.blue[1],
+            borderRadius: 4,
+          }],
+        },
+        options: {
+          ...chartOptions("Assets", true),
+          indexAxis: "y",
+        },
+      });
+
+      const condLabels = ["Good", "Fair", "Poor", "Damaged"];
+      const condMap = countBy(
+        rows.flatMap((r) => {
+          const out = [];
+          if (r.hasComputer) out.push({ c: r.computerCondition });
+          if (r.hasPrinter) out.push({ c: r.printerCondition });
+          return out;
+        }),
+        (x) => x.c
+      );
+      makeChart("chartCondition", {
+        type: "doughnut",
+        data: {
+          labels: condLabels,
+          datasets: [{
+            data: condLabels.map((l) => condMap.get(l) || 0),
+            backgroundColor: CHART_COLORS.condition,
+            borderWidth: 2,
+            borderColor: "#fff",
+          }],
+        },
+        options: pieOptions(),
+      });
+
+      const osLabels = ["Windows 11", "Windows 10", "Windows 8", "Linux", "Other"];
+      const osMap = countBy(
+        rows.filter((r) => r.hasComputer),
+        (r) => r.osCategory
+      );
+      makeChart("chartOs", {
+        type: "pie",
+        data: {
+          labels: osLabels,
+          datasets: [{
+            data: osLabels.map((l) => osMap.get(l) || 0),
+            backgroundColor: CHART_COLORS.pie,
+            borderWidth: 2,
+            borderColor: "#fff",
+          }],
+        },
+        options: pieOptions(),
+      });
+
+      const procLabels = ["Core i3", "Core i5", "Core i7", "Ryzen", "Other"];
+      const procMap = countBy(
+        rows.filter((r) => r.hasComputer),
+        (r) => r.processorCategory
+      );
+      makeChart("chartProcessor", {
+        type: "bar",
+        data: {
+          labels: procLabels,
+          datasets: [{
+            label: "Devices",
+            data: procLabels.map((l) => procMap.get(l) || 0),
+            backgroundColor: CHART_COLORS.blue[2],
+            borderRadius: 6,
+          }],
+        },
+        options: chartOptions("Count", true),
+      });
+
+      const ramLabels = ["4GB", "8GB", "16GB", "32GB", "Other"];
+      const ramMap = countBy(
+        rows.filter((r) => r.hasComputer),
+        (r) => (ramLabels.includes(r.ramCategory) ? r.ramCategory : "Other")
+      );
+      makeChart("chartRam", {
+        type: "bar",
+        data: {
+          labels: ramLabels,
+          datasets: [{
+            label: "Devices",
+            data: ramLabels.map((l) => ramMap.get(l) || 0),
+            backgroundColor: CHART_COLORS.blue[3],
+            borderRadius: 6,
+          }],
+        },
+        options: chartOptions("Count", true),
+      });
+
+      const storageLabels = ["128GB", "256GB", "512GB", "1TB", "Other"];
+      const storageMap = countBy(
+        rows.filter((r) => r.hasComputer),
+        (r) => r.storageCategory
+      );
+      makeChart("chartStorage", {
+        type: "bar",
+        data: {
+          labels: storageLabels,
+          datasets: [{
+            label: "Devices",
+            data: storageLabels.map((l) => storageMap.get(l) || 0),
+            backgroundColor: CHART_COLORS.blue[4],
+            borderRadius: 6,
+          }],
+        },
+        options: chartOptions("Count", true),
+      });
+
+      const printerMap = countBy(
+        rows.filter((r) => r.hasPrinter),
+        (r) => r.printerModel || "Unknown"
+      );
+      let printer = mapToChartData(printerMap);
+      if (printer.labels.length > 8) {
+        const top = printer.labels.slice(0, 7);
+        const otherSum = printer.values.slice(7).reduce((a, b) => a + b, 0);
+        printer = {
+          labels: [...top, "Other"],
+          values: [...printer.values.slice(0, 7), otherSum],
+        };
+      }
+      makeChart("chartPrinter", {
+        type: "pie",
+        data: {
+          labels: printer.labels,
+          datasets: [{
+            data: printer.values,
+            backgroundColor: CHART_COLORS.pie,
+            borderWidth: 2,
+            borderColor: "#fff",
+          }],
+        },
+        options: pieOptions(),
+      });
+    }
+
+    function chartOptions(yLabel, beginAtZero) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: "#0c2d4a" },
+        },
+        scales: {
+          y: {
+            beginAtZero,
+            ticks: { precision: 0 },
+            title: { display: !!yLabel, text: yLabel },
+          },
+          x: { ticks: { maxRotation: 45, minRotation: 0 } },
+        },
+      };
+    }
+
+    function pieOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 12, padding: 10 } },
+          tooltip: { backgroundColor: "#0c2d4a" },
+        },
+      };
+    }
+
+    function conditionBadge(c) {
+      const cls = {
+        Good: "badge-good",
+        Fair: "badge-fair",
+        Poor: "badge-poor",
+        Damaged: "badge-damaged",
+      }[c] || "badge-fair";
+      return `<span class="badge ${cls}">${c}</span>`;
+    }
+
+    function renderTables(rows) {
+      const branchStats = new Map();
+      rows.forEach((r) => {
+        if (!r.branch) return;
+        if (!branchStats.has(r.branch)) {
+          branchStats.set(r.branch, { computers: 0, printers: 0 });
+        }
+        const s = branchStats.get(r.branch);
+        if (r.hasComputer && r.deviceType === "computer") s.computers += 1;
+        if (r.hasComputer && r.deviceType === "laptop") s.computers += 1;
+        if (r.hasPrinter) s.printers += 1;
+      });
+
+      const branchRows = [...branchStats.entries()]
+        .map(([name, s]) => ({
+          name,
+          computers: s.computers,
+          printers: s.printers,
+          total: s.computers + s.printers,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      document.getElementById("tableBranches").innerHTML = branchRows
+        .map(
+          (b) => `
+        <tr>
+          <td>${escapeHtml(b.name)}</td>
+          <td>${b.computers}</td>
+          <td>${b.printers}</td>
+          <td><strong>${b.total}</strong></td>
+        </tr>`
+        )
+        .join("");
+
+      const attention = rows.filter(
+        (r) =>
+          r.hasComputer &&
+          (r.computerCondition === "Poor" || r.computerCondition === "Damaged")
+      );
+
+      document.getElementById("tableAttention").innerHTML =
+        attention.length === 0
+          ? '<tr><td colspan="7">No devices match Poor/Damaged filter.</td></tr>'
+          : attention
+              .map(
+                (r) => `
+        <tr>
+          <td>${escapeHtml(r.officer)}</td>
+          <td>${escapeHtml(r.branch)}</td>
+          <td>${escapeHtml(r.deviceName)}</td>
+          <td>${escapeHtml(r.processor)}</td>
+          <td>${escapeHtml(r.ram)}</td>
+          <td>${escapeHtml(r.os)}</td>
+          <td>${conditionBadge(r.computerCondition)}</td>
+        </tr>`
+              )
+              .join("");
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s || "";
+      return d.innerHTML;
+    }
+
+    function populateFilters(allRows) {
+      const sets = {
+        fDistrict: allRows.map((r) => r.district),
+        fBranch: allRows.map((r) => r.branch),
+        fOfficer: allRows.map((r) => r.officer),
+        fProcessor: allRows.map((r) => r.processorCategory),
+        fRam: allRows.map((r) => r.ramCategory),
+        fOs: allRows.map((r) => r.osCategory),
+        fPrinterModel: allRows.filter((r) => r.hasPrinter).map((r) => r.printerModel),
+      };
+      sets.fCondition = ["Good", "Fair", "Poor", "Damaged"];
+
+      Object.entries(sets).forEach(([id, values]) => {
+        const el = document.getElementById(id);
+        const current = el.value;
+        const opts = id === "fCondition" ? values : uniqueSorted(values);
+        el.innerHTML =
+          '<option value="">All</option>' +
+          opts.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+        if (opts.includes(current)) el.value = current;
+      });
+    }
+
+    function updatePrintSummary(m) {
+      document.getElementById("printSummary").innerHTML = `
+        <h2>Executive Summary</h2>
+        <p><strong>Total IT assets:</strong> ${m.totalAssets} (${m.totalComputers} computers, ${m.totalLaptops} laptops, ${m.totalPrinters} printers)</p>
+        <p><strong>Geographic coverage:</strong> ${m.totalDistricts} districts, ${m.totalBranches} branches</p>
+        <p><strong>Asset health:</strong> ${m.workingDevices} working (Good/Fair), ${m.damagedDevices} requiring attention (Poor/Damaged)</p>
+      `;
+    }
+
+    function refresh() {
+      const rows = filterRows(rawData.rows);
+      const m = computeMetrics(rows);
+      renderKpis(m);
+      renderCharts(m, rows);
+      renderTables(rows);
+      updatePrintSummary(m);
+    }
+
+    function init() {
+      rawData = loadData();
+      const date = new Date(rawData.generatedAt);
+      document.getElementById("lastUpdated").textContent =
+        "Last updated: " +
+        date.toLocaleDateString(undefined, {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+      populateFilters(rawData.rows);
+
+      document.querySelectorAll(".toolbar select").forEach((el) => {
+        el.addEventListener("change", refresh);
+      });
+      document.getElementById("btnReset").addEventListener("click", () => {
+        document.querySelectorAll(".toolbar select").forEach((s) => (s.value = ""));
+        refresh();
+      });
+      document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+      refresh();
+    }
+
+    init();
+  </script>
+</body>
+</html>
